@@ -1,1 +1,1 @@
-declare const container: HTMLDivElement;
+import './components/pager';
