@@ -3,8 +3,18 @@
     <head>
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="index.js" defer></script>
+        <style>
+            j-svg {
+                display: inline-block;
+            }
+            j-svg svg {
+                height: 100%;
+                width: 100%;
+            }
+        </style>
     </head>
     <body>
+        <j-svg src="img/arrowDown.svg" class="w-6 text-pink-500"></j-svg>
         <j-pager index="1">
             <div class="hidden">
                 page 1
