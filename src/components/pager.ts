@@ -15,7 +15,7 @@ class pager extends HTMLElement {
         this.render();
     }
     render(){
-        [...this.children].forEach((el, i)=>i !== this._index ? el.classList.add('hidden') : el.classList.remove('hidden'));
+        [...(this.children as unknown as Element[])].forEach((el, i)=>i !== this._index ? el.classList.add('hidden') : el.classList.remove('hidden'));
     }
     next(skip = 1){
         this.index += skip;
