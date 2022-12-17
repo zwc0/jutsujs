@@ -1,53 +1,69 @@
-/// <reference no-default-lib="false"/>
-/// <reference lib="ES2015" />
-/// <reference lib="dom" />
-/// <reference lib="webworker" />
-
-/* 
-In progress.
-This file includes helper functions to apply a callback on specified anchor elements to execute methods
-before fetching the request and after receiving a response. For example, if you want to display a spinner
-while waiting on a response from the server, use onBefore in downloader to show the indicator, then
-onComplete to hide the indicator once a response is received. onComplete will also receive the ok status
-so the developer can separately handle errors.
- */
-
-type TDownloaderResponse = {
-    type: 'downloaderResponse';
-    ok: boolean;
-    url: string;
+type Config = {
+    prefix?: string;
+    fetchOverride?: (element: JDownloader) => Promise<void | never>;
 };
 
-async function sw(req: Request){
-    const res = await fetch(req);
-    const data: TDownloaderResponse = {
-        type: 'downloaderResponse',
-        ok: res.ok,
-        url: res.url
-    };
-    (self as unknown as ServiceWorkerGlobalScope).clients.matchAll()
-        .then(x=>x.map(client=>client.postMessage(data)));
-    return res;
+type EventState = {
+    state: 'pending' | 'loaded';
+} | {
+    state: 'failed',
+    error: any
+};
+
+type JDownloaderEventMap = HTMLElementEventMap & {
+    'statechange': CustomEvent<EventState>;
 }
 
-function downloader({attr = 'data-j-downloader', onBefore, onComplete }
-    : {attr?: string, onBefore?: ({el, url}: {el: HTMLElement, url: string}) => void, onComplete: (data: TDownloaderResponse) => void}){
-    document.body.addEventListener('click', e => {
-        const target = e.target as HTMLElement;
-        const el: HTMLElement = target.hasAttribute(attr) ? target : target.closest(`[${attr}]`);
-        if (!el)
-            return;
-        const url = el.getAttribute('src');
-        onBefore?.({el, url});
-        function messageHandler(e: MessageEvent<TDownloaderResponse>){
-            if (e.data.type !== 'downloaderResponse' || e.data.url !== url)
-                return;
-            navigator.serviceWorker.removeEventListener('message', messageHandler);
-            onComplete(e.data);
+const fetchAndDownload = async (url: string) => {
+    const res = await fetch(url);
+    if (!res.ok)
+        throw res;
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download;
+    a.target = '_blank';
+    a.click();
+    setTimeout(() => {
+        URL.revokeObjectURL(a.href);
+    }, 100 * 60);
+}
+
+const init = ({ prefix = 'j', fetchOverride }: Config = {}) => {
+    class JDownloader extends HTMLAnchorElement {
+        constructor() {
+            super();
+            this.addEventListener('click', this._onClick.bind(this));
         }
-        navigator.serviceWorker.addEventListener('message', messageHandler);
-    });
+    
+        set _state(detail: EventState) {
+            const event = new CustomEvent<EventState>('statechange', { detail });
+            this.dispatchEvent(event);
+        }
+    
+        async _onClick(e: MouseEvent) {
+            e.preventDefault();
+            try {
+                this._state = { state: 'pending' };
+                fetchOverride ? await fetchOverride(this) : await fetchAndDownload(this.href);
+                this._state = { state: 'loaded' };
+            } catch (error) {
+                this._state = { state: 'failed', error };
+            }
+        }
+    
+        addEventListener<T extends keyof JDownloaderEventMap>(
+            type: T,
+            listener: (this: JDownloader, ev: JDownloaderEventMap[T]) => any,
+            options?: boolean | AddEventListenerOptions
+        ): void {
+            super.addEventListener(type, listener, options);
+        }
+    }
+    customElements.define(`${prefix}-downloader`, JDownloader, { extends: 'a' });
+    return JDownloader;
 }
 
-export {TDownloaderResponse,
-    sw, downloader};
+export default init;
+type JDownloader = InstanceType<ReturnType<typeof init>>;
+export {JDownloader};

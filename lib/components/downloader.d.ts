@@ -1,19 +1,19 @@
-/// <reference no-default-lib="true"/>
-/// <reference lib="es2015" />
-/// <reference lib="dom" />
-/// <reference lib="webworker" />
-declare type TDownloaderResponse = {
-    type: 'downloaderResponse';
-    ok: boolean;
-    url: string;
+declare type Config = {
+    prefix?: string;
+    fetchOverride?: (element: JDownloader) => void;
 };
-declare function sw(req: Request): Promise<Response>;
-declare function downloader({ attr, onBefore, onComplete }: {
-    attr?: string;
-    onBefore?: ({ el, url }: {
-        el: HTMLElement;
-        url: string;
-    }) => void;
-    onComplete: (data: TDownloaderResponse) => void;
-}): void;
-export { TDownloaderResponse, sw, downloader };
+declare type EventState = {
+    state: 'pending' | 'loaded' | 'failed';
+};
+declare type JDownloaderEventMap = HTMLElementEventMap & {
+    'statechange': CustomEvent<EventState>;
+};
+declare class JDownloader extends HTMLAnchorElement {
+    constructor();
+    set _state(detail: EventState);
+    _onClick(e: MouseEvent): Promise<void>;
+    addEventListener<T extends keyof JDownloaderEventMap>(type: T, listener: (this: JDownloader, ev: JDownloaderEventMap[T]) => any, options?: boolean | AddEventListenerOptions): void;
+}
+declare const _default: ({ prefix }?: Config) => void;
+export default _default;
+export { JDownloader };
