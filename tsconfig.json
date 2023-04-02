@@ -6,9 +6,10 @@
         // "sourceMap": true,
         "moduleResolution": "Node",
         "declaration": true,
-        "removeComments": false
+        "removeComments": false,
+        "jsx": "react-jsx"
         // "noImplicitAny": true,
-        // "strict": true
+        // "strict": true,
     },
-    "include": ["./src/**/*.ts"]
+    "include": ["./src/**/*.ts", "./src/**/*.tsx"]
 }
